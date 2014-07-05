@@ -115,7 +115,6 @@ int id recal 0x7f070019
 int id sandbox 0x7f070008
 int id satellite 0x7f070002
 int id selectionDetails 0x7f07000b
-int id settings 0x7f07001c
 int id strict_sandbox 0x7f070009
 int id terrain 0x7f070003
 int id wrap_content 0x7f07000d

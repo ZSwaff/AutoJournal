@@ -12,6 +12,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.Settings;
 import android.widget.Toast;
 
 public class UpdateService extends Service implements
@@ -23,7 +24,7 @@ public class UpdateService extends Service implements
     @Override
 	public void onCreate() {
 		super.onCreate();
-
+		
 		//update in more detail every hour
 		Calendar cal = Calendar.getInstance();
 		if(cal.get(Calendar.MINUTE)==0 || cal.get(Calendar.MINUTE)==59) {
@@ -31,8 +32,26 @@ public class UpdateService extends Service implements
 			MainActivity.startAlarm(getApplication(), true);
 		}
 		
-        mLocationClient = new LocationClient(this, this, this);
-        mLocationClient.connect();
+		boolean isAirplaneModeOn = Settings.Global.getInt(getApplicationContext().getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 0) == 1;
+		if(isAirplaneModeOn){
+	        Writer.writeErrorToLog("airplane mode on", cal);
+	        Writer.updateMetadata(cal);
+	        
+	        MainActivity.justUpdated = true;
+		}
+		else{
+			boolean isGpsOn = ((LocationManager) getSystemService(LOCATION_SERVICE)).isProviderEnabled(LocationManager.GPS_PROVIDER);
+			if (!isGpsOn){
+				Writer.writeErrorToLog("gps not on", cal);
+		        Writer.updateMetadata(cal);
+		        
+		        MainActivity.justUpdated = true;
+			}
+			else{
+				mLocationClient = new LocationClient(this, this, this);
+				mLocationClient.connect();
+			}
+		}
     }
 
     @Override
@@ -41,8 +60,7 @@ public class UpdateService extends Service implements
     	Location location = mLocationClient.getLastLocation();
     	
     	Calendar cal = Calendar.getInstance();
-    	boolean isGpsOn = ((LocationManager) getSystemService(LOCATION_SERVICE)).isProviderEnabled(LocationManager.GPS_PROVIDER);
-        Writer.writeLocationToLog(isGpsOn, location, cal);
+        Writer.writeLocationToLog(location, cal);
         Writer.updateMetadata(cal);
         
         MainActivity.justUpdated = true;

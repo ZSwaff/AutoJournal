@@ -87,8 +87,21 @@ public class MainActivity extends FragmentActivity{
 		ArrayList<String> preData = Reader.readFile(metadataFile);
 		((TextView) findViewById(R.id.metadata)).setText(preData.get(0)+"\n"+preData.get(2)+"\n"+preData.get(4));
 		
-		String lastLocStr = Reader.findLastLoc(baseRoot);
-		((TextView) findViewById(R.id.lastLoc)).setText("Last Loc :: "+lastLocStr + "\n" + getAddress(Converter.stringToLoc(lastLocStr)));
+
+		TextView lastLocTextView = ((TextView) findViewById(R.id.lastLoc));
+		String newLocStr = Reader.findLastLoc(baseRoot);
+		if(!newLocStr.contains("<")){
+			Location newLoc = Converter.stringToLoc(newLocStr);
+			String oldText = lastLocTextView.getText().toString();
+			if(oldText.length() > 0 && !oldText.contains("<")){
+				String oldAddr = oldText.substring(oldText.indexOf("\n")+1);
+				Location oldLoc = Converter.stringToLoc(oldText.substring(oldText.indexOf("::")+3, oldText.indexOf("\n")));
+				double distance = Math.sqrt(Math.pow(oldLoc.getLongitude() - newLoc.getLongitude(), 2) + Math.pow(oldLoc.getLatitude() - newLoc.getLatitude(), 2)) * 1000000;
+				lastLocTextView.setText("Last Loc :: " + newLocStr + "\n" + ((distance < 50)?oldAddr:getAddress(newLoc)));
+			}
+			else lastLocTextView.setText("Last Loc :: " + newLocStr + "\n" + getAddress(newLoc));
+		}
+		else lastLocTextView.setText("Last Loc :: " + newLocStr);
 		
 		((TextView) findViewById(R.id.lastError)).setText("Last Error ::  "+Reader.findLastError(baseRoot));
     }
@@ -319,9 +332,6 @@ public class MainActivity extends FragmentActivity{
             case R.id.all_error_report:
             	updateAllErrorFiles();
                 labelUpdate();
-                return true;
-            case R.id.settings:
-            	Toast.makeText(this.getApplicationContext(), "Unavailable Functionality", Toast.LENGTH_SHORT).show();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
