@@ -9,8 +9,6 @@ public class StartupReceiver extends BroadcastReceiver
     @Override
     public void onReceive(Context context, Intent intent) 
     {
-    	MainActivity.decideWhetherThisShouldUpdateToday();
-    	
     	MainActivity.startAlarm(context, false);
     }
 }

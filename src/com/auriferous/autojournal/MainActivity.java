@@ -1,26 +1,19 @@
 package com.auriferous.autojournal;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
-import java.util.Scanner;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -29,7 +22,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Chronometer;
 import android.widget.Chronometer.OnChronometerTickListener;
 import android.widget.TextView;
@@ -41,15 +33,13 @@ public class MainActivity extends FragmentActivity{
 	public final static String[] dayOfWeekReference = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 	public final static String[] numberSuffixReference = {"th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"};
 	
-	private final static int baseUdIntInMin = 5;
-	private static int udIntInMin = baseUdIntInMin;
-	public static long udInt = 1000 * 60 * udIntInMin;
-    
-	public final static boolean conductingBatteryStatisticalAnalysis = false;
-	public static boolean updatingToday = true;
+	public final static int updateIntervalMin = 5;
+	public static long updateIntervalMillis = updateIntervalMin * 1000 * 60;
+	public static boolean justUpdated = false;
+	public static boolean justUpdatedHourly = false;
 	
-	public static boolean isUpdating = false;
-	static PendingIntent pendAlarmIntent;
+	private static PendingIntent pendAlarmIntent;
+	
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,15 +50,13 @@ public class MainActivity extends FragmentActivity{
         chron.start();
         OnChronometerTickListener listener = new OnChronometerTickListener() {
 			@Override
-			public void onChronometerTick(Chronometer chronometer) 
-			{
+			public void onChronometerTick(Chronometer chronometer) {
 				chronUpdate();
 			}
 		};
         chron.setOnChronometerTickListener(listener);
-        
-        decideWhetherThisShouldUpdateToday();
-        
+
+    	labelUpdate();
         startAlarm(getApplication(), false);
     }
     @Override
@@ -78,94 +66,34 @@ public class MainActivity extends FragmentActivity{
     	super.onDestroy();
     }
     
-    public void startUpdates(View view)
+    
+    private void chronUpdate()
     {
-        startAlarm(getApplication(), false);
+    	long time = Converter.calculateMillisToNextInterval(Calendar.getInstance(), false);
+		((TextView) findViewById(R.id.nextUpdateLabel)).setText("Next update in " + Converter.millisToString(time));
+		if(justUpdatedHourly){
+			justUpdatedHourly = false;
+			updateErrorFile();
+		}
+		if(justUpdated){
+			justUpdated = false;
+			labelUpdate();
+		}
     }
-    public void stopUpdates(View view)
+    private void labelUpdate()
     {
-    	AlarmManager aM = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-    	aM.cancel(pendAlarmIntent);
-    	
-    	isUpdating=false;
-    }
-    public void chronUpdate()
-    {
-    	if(isUpdating)
-    	{
-	    	long time = millisToNextInterval(Calendar.getInstance(), false);
-			((TextView) findViewById(R.id.nextUpdateLabel)).setText("Next update in " + millisToTime(time));
-			File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
-			File metadataFile = new File(baseRoot, "Metadata.txt");
-    		if(metadataFile.exists())
-    		{
-				ArrayList<String> preData = MainActivity.readFromFile(metadataFile);
-				String text = (conductingBatteryStatisticalAnalysis?"Today is a "+(updatingToday?"":"no ")+"tracking day\n":"");
-				
-				((TextView) findViewById(R.id.metadata)).setText(text+preData.get(0)+"\n"+preData.get(2)+"\n"+preData.get(4));
-				String lastLocStr = findLastLoc(baseRoot);
-				((TextView) findViewById(R.id.lastLoc)).setText("Last Loc :: "+lastLocStr /*+ "\n" + getAddress(UpdateService.stringToLoc(lastLocStr))*/);
-				((TextView) findViewById(R.id.lastError)).setText("Last Error ::  "+findLastError(baseRoot));
-    		}
-    	}
+    	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
+		File metadataFile = new File(baseRoot, "Metadata.txt");
+		ArrayList<String> preData = Reader.readFile(metadataFile);
+		((TextView) findViewById(R.id.metadata)).setText(preData.get(0)+"\n"+preData.get(2)+"\n"+preData.get(4));
+		
+		String lastLocStr = Reader.findLastLoc(baseRoot);
+		((TextView) findViewById(R.id.lastLoc)).setText("Last Loc :: "+lastLocStr + "\n" + getAddress(Converter.stringToLoc(lastLocStr)));
+		
+		((TextView) findViewById(R.id.lastError)).setText("Last Error ::  "+Reader.findLastError(baseRoot));
     }
     
-    public String findLastLoc(File baseRoot)
-    {
-    	boolean started = false;
-    	for(int year = 2000;;year++)
-    	{
-    		File yearRoot = new File(baseRoot, ""+(year+1));
-    		if(yearRoot.exists())
-    		{
-    			started = true;
-    			continue;
-    		}
-    		if(!started) continue;
-    		yearRoot = new File(baseRoot, ""+year);
-    		for(int iMonth = 11; iMonth >= 0; iMonth--)
-    		{
-    	    	File monthRoot = new File(yearRoot, monthReference[iMonth]);
-    	    	if(!monthRoot.exists()) continue;
-    	    	for(int dayOM = 31; dayOM >= 1; dayOM--)
-    	    	{
-    	    		File dayFile = new File(monthRoot, (dayOM<10?"0":"")+dayOM+".txt");
-        	    	if(!dayFile.exists()) continue;
-        	    	ArrayList<String> dayData = readFromFile(dayFile);
-        	    	
-        	    	String lastLog = dayData.get(dayData.size()-1);
-        	    	return lastLog.substring(lastLog.indexOf("::")+3);
-    	    	}
-    		}
-    	}
-    }
-    public String findLastError(File baseRoot)
-    {
-    	boolean started = false;
-    	for(int year = 2000;;year++)
-    	{
-    		File yearRoot = new File(baseRoot, ""+(year+1));
-    		if(yearRoot.exists())
-    		{
-    			started = true;
-    			continue;
-    		}
-    		if(!started) continue;
-    		yearRoot = new File(baseRoot, ""+year);
-    		for(int iMonth = 11; iMonth >= 0; iMonth--)
-    		{
-    	    	File monthRoot = new File(yearRoot, monthReference[iMonth]);
-    	    	if(!monthRoot.exists()) continue;
-    	    	File errorLog = new File(monthRoot, "Errors.txt");
-    	    	if(!errorLog.exists()) return "";
-    	    	
-    	    	ArrayList<String> errData = readFromFile(errorLog);
-    	    	return errData.get(errData.size()-1);
-    		}
-    	}
-    }
-    
-    public void recalcMetadata(View view)
+    private void recalcMetadata()
     {
     	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
     	File metadataFile = new File(baseRoot, "Metadata.txt");
@@ -198,7 +126,7 @@ public class MainActivity extends FragmentActivity{
     	    	{
     	    		File dayFile = new File(monthRoot, (dayOM<10?"0":"")+dayOM+".txt");
         	    	if(!dayFile.exists()) continue;
-        	    	ArrayList<String> dayData = readFromFile(dayFile);
+        	    	ArrayList<String> dayData = Reader.readFile(dayFile);
         	    	if(isFirst)
         	    	{
         	    		firstU += dayData.get(2).substring(0, 8) + " on " + dayData.get(0);
@@ -211,16 +139,11 @@ public class MainActivity extends FragmentActivity{
     		}
     	}
     	
-    	String strTotalUs = "Total ::  "+UpdateService.formatIntAsString(totalUs);
+    	String strTotalUs = "Total ::  "+Converter.intToStringNicely(totalUs);
     	
-    	writeToTextFile(metadataFile, firstU+"\n\n"+lastU+"\n\n"+strTotalUs);
+    	Writer.writeToTextFile(metadataFile, firstU+"\n\n"+lastU+"\n\n"+strTotalUs);
     }
-    public static void updateErrorFile(View view)
-    {
-    	Calendar cal = Calendar.getInstance();
-    	updateErrorFile(view, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH));
-    }
-    public static void updateErrorFile(View view, int year, int monthIndex)
+    private static void updateErrorFile(int year, int monthIndex)
     {
     	//make monthly error file. display most recent on view if it's not null
     	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
@@ -255,22 +178,20 @@ public class MainActivity extends FragmentActivity{
 	    		continue;
 	    	}
 	    	
-	    	ArrayList<String> dayData = readFromFile(dayFile); dayData.remove(0); dayData.remove(0);
+	    	ArrayList<String> dayData = Reader.readFile(dayFile); dayData.remove(0); dayData.remove(0);
 	    	int curHour = 0;
 	    	int curMinute = 0;
 	    	String nextTime = dayData.get(0).substring(0, 8); dayData.remove(0);
 	    	
 	    	while(curHour < 24){
-	    		int timeGap = timeBetween(nextTime, curHour, curMinute);
+	    		int timeGap = Converter.calculateTimeBetween(nextTime, curHour, curMinute);
 	    		
 	    		if(timeGap <= 240){
 	    			if(timeGap > -60){
 		    			if(currentProblem){
 		    				//a problem just ended
-		    				String endTime = (dayOM<10?"0":"")+dayOM+"-" + (curHour<10?"0":"")+curHour+":" + (curMinute<10?"0":"")+curMinute+":00";
-		    				String strUpdatesMissed = ""+updatesMissed;
-		    				while(strUpdatesMissed.length() < 4) strUpdatesMissed = "0" + strUpdatesMissed;
-		    				errors.add(strUpdatesMissed + " between " + startProblem + " and "+ endTime);
+		    				String endTime = Converter.timeValuesToString(dayOM, curHour, curMinute);
+		    				errors.add(String.format("%04d", updatesMissed) + " between " + startProblem + " and "+ endTime);
 		    				totUpdatesMissed += updatesMissed;
 		    				updatesMissed = 0;
 		    				currentProblem = false;
@@ -279,7 +200,7 @@ public class MainActivity extends FragmentActivity{
 		    		if(dayData.size() == 0) {
 		    			if(curHour != 23 || curMinute != 55){
 		    				updatesMissed = 12 * (23 - curHour) + (55 - curMinute)/5;
-		    				startProblem = (dayOM<10?"0":"")+dayOM+"-" + (curHour<10?"0":"")+curHour+":" + (curMinute<10?"0":"")+curMinute+":00";
+		    				startProblem = Converter.timeValuesToString(dayOM, curHour, curMinute);
 		    				currentProblem = true;
 		    			}
 		    			break;
@@ -290,12 +211,11 @@ public class MainActivity extends FragmentActivity{
 	    		else {
 	    			updatesMissed++;
 	    			if(!currentProblem){
-	    				startProblem = (dayOM<10?"0":"")+dayOM+"-" + (curHour<10?"0":"")+curHour+":" + (curMinute<10?"0":"")+curMinute+":00";
+	    				startProblem = Converter.timeValuesToString(dayOM, curHour, curMinute);
 	    				currentProblem = true;
 	    			}
 	    		}
 	    		
-	    		//errors.add(report);
 	    		//advance time
 	    		curMinute += 5;
 	    		if(curMinute == 60){
@@ -315,22 +235,21 @@ public class MainActivity extends FragmentActivity{
     	
     	if(currentProblem && (curTime > monthEndTime)){
 			String endTime = (dayOM<10?"0":"")+dayOM+"-23:55:00";
-			String strUpdatesMissed = ""+updatesMissed;
-			while(strUpdatesMissed.length() < 4) strUpdatesMissed = "0" + strUpdatesMissed;
-			errors.add(strUpdatesMissed + " between " + startProblem + " and "+ endTime);
+			errors.add(String.format("%04d", updatesMissed) + " between " + startProblem + " and "+ endTime);
 			totUpdatesMissed += updatesMissed;
 		}
     	
     	String allErrors = "";
     	for(String err : errors)
     		allErrors += err + "\n";
-    	writeToTextFile(errorLog, "Error report for "+MainActivity.monthReference[monthIndex].substring(3)+" "+year+": "+totUpdatesMissed +" total\n\n" + allErrors);
-    	
-    	if(view != null){
-    		
-    	}
+    	Writer.writeToTextFile(errorLog, "Error report for "+MainActivity.monthReference[monthIndex].substring(3)+" "+year+": "+totUpdatesMissed +" total\n\n" + allErrors);
     }
-    public static void updateAllErrorFiles(View view)
+    private static void updateErrorFile()
+    {
+    	Calendar cal = Calendar.getInstance();
+    	updateErrorFile(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH));
+    }
+    private static void updateAllErrorFiles()
     {
     	boolean started = false;
     	for(int year = 2000;;year++)
@@ -341,11 +260,11 @@ public class MainActivity extends FragmentActivity{
     		else if(started) break;
     		
     		for(int iMonth = 0; iMonth <= 11; iMonth++)
-    			updateErrorFile(view, year, iMonth);
+    			updateErrorFile(year, iMonth);
     	}
     }
     
-    public String getAddress(Location loc) {
+    private String getAddress(Location loc) {
     	if (Geocoder.isPresent()){
     		Geocoder geocoder = new Geocoder(this, Locale.getDefault());
     		List<Address> addresses = null;
@@ -358,107 +277,12 @@ public class MainActivity extends FragmentActivity{
     		} 
 
     		if (addresses != null && addresses.size() > 0)
-    			return parseAddress(addresses.get(0));
+    			return Converter.addressToString(addresses.get(0));
     		else
     			return "No address found";
     	}
     	return "No Geocoder";
     }
-    public static String parseAddress(Address addr)
-    {
-    	String returner = addr.getMaxAddressLineIndex() > 0 ? addr.getAddressLine(0) : "";
-    	returner += ", " + addr.getLocality() + ", " + addr.getAdminArea();
-    	String country = addr.getCountryName();
-    	if(!country.equalsIgnoreCase("United States")) returner += ", " + country;
-    	return returner;
-    }
-
-    public static int timeBetween(String formatedTime, int hours, int minutes)
-    {
-    	//seconds assumed to be 0, day assumed to be the same. returns an answer in seconds
-    	int inHours = Integer.parseInt(formatedTime.substring(0, 2));
-    	int inMinutes = Integer.parseInt(formatedTime.substring(3, 5));
-    	int inSeconds = Integer.parseInt(formatedTime.substring(6));
-    	
-    	return inSeconds + 60*(inMinutes - minutes) + 3600*(inHours - hours);
-    }
-    public static long millisToNextInterval(Calendar cal, boolean addPadding)
-    {
-    	long time = (((udIntInMin-((cal.get(Calendar.MINUTE))%udIntInMin+1))*60+60-cal.get(Calendar.SECOND))*1000-cal.get(Calendar.MILLISECOND));
-    	if(addPadding && time < 5000) time += udInt;
-    	return time;
-    }
-    public static String millisToTime(long millis)
-    {
-    	long sec = millis / 1000;
-    	return (sec / 60) + ":" + ((sec < 10)?"0":"") + (sec%60); 
-    }
-
-    public static void decideWhetherThisShouldUpdateToday()
-    {
-    	if(conductingBatteryStatisticalAnalysis)
-    	{
-    		Calendar cal = Calendar.getInstance();
-    		Random rand = new Random(cal.get(Calendar.YEAR)*(cal.get(Calendar.MONTH)+1)*cal.get(Calendar.DAY_OF_MONTH)*(cal.get(Calendar.DAY_OF_WEEK)+1));
-    		updatingToday = rand.nextBoolean();
-    		if(updatingToday)
-    		{
-    			udIntInMin = baseUdIntInMin;
-    			udInt = 1000 * 60 * udIntInMin;
-    		}
-    		else
-    		{
-    			udIntInMin = 60;
-    			udInt = 1000 * 60 * udIntInMin;
-    		}
-    	}
-    }
-    public static int getBatteryPctg(Context context)
-    {
-    	IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-    	Intent batteryStatus = context.registerReceiver(null, ifilter);
-    	
-    	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-    	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-
-    	return (int) Math.round((level / (double)scale)*100d);
-    }
-    
-    
-    public static void writeToTextFile(File file, String message)
-    {
-    	try {
-            FileWriter fileWriter = new FileWriter(file, true);
-            BufferedWriter out = new BufferedWriter(fileWriter);
-            out.write(message);
-            out.close(); fileWriter.close();
-            
-        } catch (IOException e) {}
-    }
-    public static void writeToTextFile(File root, String fileName, String message)
-    {
-    	if (!root.exists())
-    		root.mkdirs();
-    	File file = new File(root, fileName+(fileName.contains(".txt")?"":".txt"));
-        writeToTextFile(file, message);
-    }
-    public static ArrayList<String> readFromFile(File file)
-    {
-    	ArrayList<String> returner = new ArrayList<String>();
-    	
-    	try{
-	    	FileReader fileReader = new FileReader(file);
-	    	Scanner scanner = new Scanner(file);
-	    	
-	    	while (scanner.hasNextLine()) 
-			    	returner.add(scanner.nextLine());
-			    
-			scanner.close(); fileReader.close();
-    	} catch (IOException e) {}
-		
-    	return returner;
-    }
-    
     public static void startAlarm(Context context, boolean addPadding)
     {
     	AlarmManager aM = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
@@ -467,15 +291,14 @@ public class MainActivity extends FragmentActivity{
     	Intent alarmIntent = new Intent(context, UpdateService.class);
 		pendAlarmIntent = PendingIntent.getService(context, 1121, alarmIntent, 0);
 		
-    	long time = millisToNextInterval(Calendar.getInstance(), addPadding);
-    	aM.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, time+SystemClock.elapsedRealtime(), udInt, pendAlarmIntent);
+    	long time = Converter.calculateMillisToNextInterval(Calendar.getInstance(), addPadding);
+    	aM.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, time+SystemClock.elapsedRealtime(), updateIntervalMillis, pendAlarmIntent);
 		
 		double seconds = ((double)time)/1000d;
-		Toast.makeText(context, "Loc logs set to update in "+ (int)seconds/60 +":"+ (seconds%60<10?"0":"") + (int)(seconds%60), Toast.LENGTH_LONG).show();
-		
-		isUpdating = true;
+		Toast.makeText(context, "AutoJournal will next record in "+ (int)seconds/60 +":"+ (seconds%60<10?"0":"") + (int)(seconds%60), Toast.LENGTH_LONG).show();
     }
-
+    
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -486,13 +309,16 @@ public class MainActivity extends FragmentActivity{
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.recal:
-                recalcMetadata(this.getCurrentFocus());
+                recalcMetadata();
+                labelUpdate();
                 return true;
             case R.id.error_report:
-            	updateErrorFile(this.getCurrentFocus());
+            	updateErrorFile();
+                labelUpdate();
                 return true;
             case R.id.all_error_report:
-            	updateAllErrorFiles(this.getCurrentFocus());
+            	updateAllErrorFiles();
+                labelUpdate();
                 return true;
             case R.id.settings:
             	Toast.makeText(this.getApplicationContext(), "Unavailable Functionality", Toast.LENGTH_SHORT).show();
