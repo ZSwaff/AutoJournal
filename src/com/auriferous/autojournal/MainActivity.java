@@ -156,7 +156,8 @@ public class MainActivity extends FragmentActivity{
     	
     	Writer.writeToTextFile(metadataFile, firstU+"\n\n"+lastU+"\n\n"+strTotalUs);
     }
-    private static void updateErrorFile(int year, int monthIndex)
+    
+    private void updateErrorFile(int year, int monthIndex)
     {
     	//make monthly error file. display most recent on view if it's not null
     	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
@@ -257,12 +258,12 @@ public class MainActivity extends FragmentActivity{
     		allErrors += err + "\n";
     	Writer.writeToTextFile(errorLog, "Error report for "+MainActivity.monthReference[monthIndex].substring(3)+" "+year+": "+totUpdatesMissed +" total\n\n" + allErrors);
     }
-    private static void updateErrorFile()
+    private void updateErrorFile()
     {
     	Calendar cal = Calendar.getInstance();
     	updateErrorFile(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH));
     }
-    private static void updateAllErrorFiles()
+    private void updateAllErrorFiles()
     {
     	boolean started = false;
     	for(int year = 2000;;year++)
@@ -274,6 +275,65 @@ public class MainActivity extends FragmentActivity{
     		
     		for(int iMonth = 0; iMonth <= 11; iMonth++)
     			updateErrorFile(year, iMonth);
+    	}
+    }
+    
+    private void updateTravelCircle(int year, int monthIndex){
+    	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
+    	File yearRoot = new File(baseRoot, ""+year);
+    	if (!yearRoot.exists()) return;
+    	File monthRoot = new File(yearRoot, MainActivity.monthReference[monthIndex]);
+    	if (!monthRoot.exists()) return;
+    	File travelCircleLog = new File(monthRoot, "Travel Circles.txt");
+        if(travelCircleLog.exists()) travelCircleLog.delete();
+
+        ArrayList<String> travelCircles = new ArrayList<String>();
+    	Calendar cal = Calendar.getInstance();
+
+    	for(int dayOM = 1; dayOM <= 31; dayOM++)
+    	{
+        	cal.set(Calendar.YEAR, year);
+    		cal.set(Calendar.MONTH, monthIndex); 
+        	cal.set(Calendar.DAY_OF_MONTH, dayOM);
+        	if(cal.get(Calendar.YEAR) != year || cal.get(Calendar.MONTH) != monthIndex || cal.get(Calendar.DAY_OF_MONTH) != dayOM) continue;
+        	
+    		File dayFile = new File(monthRoot, (dayOM<10?"0":"")+dayOM+".txt");
+	    	if(!dayFile.exists()) continue;
+	    	
+	    	ArrayList<String> fileContents = Reader.readFile(dayFile);
+	    	fileContents.remove(0); fileContents.remove(0);
+	    	
+	    	ArrayList<Location> allLocs = new ArrayList<Location>();
+	    	for(String line : fileContents){
+	    		String locStr = line.split(" :: ")[1].trim();
+	    		allLocs.add(Converter.stringToLoc(locStr));
+	    	}
+	    	
+	    	Area dayTravelCircle = new Area("", allLocs);
+	    	travelCircles.add(dayOM + "  ::" + dayTravelCircle.toString());
+    	}
+        
+    	String allCircles = "";
+    	for(String circ : travelCircles)
+    		allCircles += circ + "\n";
+    	Writer.writeToTextFile(travelCircleLog, "Travel circle report for "+MainActivity.monthReference[monthIndex].substring(3)+" "+year+"\n\n" + allCircles);
+    
+    }
+	private void updateTravelCircle(){
+    	Calendar cal = Calendar.getInstance();
+    	updateTravelCircle(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH));
+    }
+    private void updateAllTravelCircles(){
+    	boolean started = false;
+    	for(int year = 2000;;year++)
+    	{
+    		File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
+    		File yearRoot = new File(baseRoot, ""+year);
+    		if(yearRoot.exists()) started = true;
+    		else if(started) break;
+    		
+    		for(int iMonth = 0; iMonth <= 11; iMonth++)
+    			updateTravelCircle(year, iMonth);
     	}
     }
     
@@ -332,6 +392,12 @@ public class MainActivity extends FragmentActivity{
             case R.id.all_error_report:
             	updateAllErrorFiles();
                 labelUpdate();
+                return true;
+            case R.id.travel_circle:
+            	updateTravelCircle();
+                return true;
+            case R.id.all_travel_circle:
+            	updateAllTravelCircles();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

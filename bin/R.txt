@@ -91,6 +91,7 @@ int drawable ic_plusone_tall_off_client 0x7f02001c
 int drawable powered_by_google_dark 0x7f02001d
 int drawable powered_by_google_light 0x7f02001e
 int id all_error_report 0x7f07001b
+int id all_travel_circle 0x7f07001d
 int id ancillaryChrono 0x7f070018
 int id book_now 0x7f070010
 int id buyButton 0x7f07000a
@@ -117,6 +118,7 @@ int id satellite 0x7f070002
 int id selectionDetails 0x7f07000b
 int id strict_sandbox 0x7f070009
 int id terrain 0x7f070003
+int id travel_circle 0x7f07001c
 int id wrap_content 0x7f07000d
 int integer google_play_services_version 0x7f080000
 int layout activity_main 0x7f030000

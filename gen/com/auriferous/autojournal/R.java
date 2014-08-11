@@ -407,6 +407,7 @@ containing a value of this type.
     }
     public static final class id {
         public static final int all_error_report=0x7f07001b;
+        public static final int all_travel_circle=0x7f07001d;
         public static final int ancillaryChrono=0x7f070018;
         public static final int book_now=0x7f070010;
         public static final int buyButton=0x7f07000a;
@@ -433,6 +434,7 @@ containing a value of this type.
         public static final int selectionDetails=0x7f07000b;
         public static final int strict_sandbox=0x7f070009;
         public static final int terrain=0x7f070003;
+        public static final int travel_circle=0x7f07001c;
         public static final int wrap_content=0x7f07000d;
     }
     public static final class integer {

@@ -58,7 +58,8 @@ public class Reader
     public static String findLastError(File baseRoot)
     {
     	boolean started = false;
-    	for(int year = 2000;;year++)
+    	int year = 2000;
+    	for(;;year++)
     	{
     		File yearRoot = new File(baseRoot, ""+(year+1));
     		if(yearRoot.exists())
@@ -67,17 +68,23 @@ public class Reader
     			continue;
     		}
     		if(!started) continue;
-    		yearRoot = new File(baseRoot, ""+year);
+    		break;
+    	}
+    	for(;;year--)
+    	{
+    		File yearRoot = new File(baseRoot, ""+year);
+    		if(!yearRoot.exists()) break;
     		for(int iMonth = 11; iMonth >= 0; iMonth--)
     		{
     	    	File monthRoot = new File(yearRoot, MainActivity.monthReference[iMonth]);
     	    	if(!monthRoot.exists()) continue;
     	    	File errorLog = new File(monthRoot, "Errors.txt");
-    	    	if(!errorLog.exists()) return "";
+    	    	if(!errorLog.exists()) continue;
     	    	
     	    	ArrayList<String> errData = readFile(errorLog);
     	    	return errData.get(errData.size()-1);
     		}
     	}
+    	return "";
     }
 }

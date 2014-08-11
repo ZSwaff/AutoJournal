@@ -27,23 +27,23 @@ public class UpdateService extends Service implements
 		
 		//update in more detail every hour
 		Calendar cal = Calendar.getInstance();
-		if(cal.get(Calendar.MINUTE)==0 || cal.get(Calendar.MINUTE)==59) {
+		if(cal.get(Calendar.MINUTE) < 4 || cal.get(Calendar.MINUTE)==59) {
 			MainActivity.justUpdatedHourly = true;
 			MainActivity.startAlarm(getApplication(), true);
 		}
 		
 		boolean isAirplaneModeOn = Settings.Global.getInt(getApplicationContext().getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 0) == 1;
 		if(isAirplaneModeOn){
-	        Writer.writeErrorToLog("airplane mode on", cal);
-	        Writer.updateMetadata(cal);
+	        //Writer.writeErrorToLog("airplane mode on", cal);
+	        //Writer.updateMetadata(cal);
 	        
 	        MainActivity.justUpdated = true;
 		}
 		else{
 			boolean isGpsOn = ((LocationManager) getSystemService(LOCATION_SERVICE)).isProviderEnabled(LocationManager.GPS_PROVIDER);
 			if (!isGpsOn){
-				Writer.writeErrorToLog("gps not on", cal);
-		        Writer.updateMetadata(cal);
+				//Writer.writeErrorToLog("gps not on", cal);
+		        //Writer.updateMetadata(cal);
 		        
 		        MainActivity.justUpdated = true;
 			}

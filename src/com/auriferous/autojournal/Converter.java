@@ -65,15 +65,12 @@ public class Converter
     	return (sec / 60) + ":" + (((sec%60) < 10)?"0":"") + (sec%60); 
     }
     
+    @SuppressLint("DefaultLocale")
     public static String locToString(Location location)
     {
-    	String latit = ""+location.getLatitude();
-    	if(!latit.contains(".")) latit+=".0000000";
-    	while(latit.substring(latit.indexOf((int)'.')+1).length()<7) latit += "0";
+    	String latit = String.format("%.7f", location.getLatitude());
     	
-    	String longit = ""+location.getLongitude();
-    	if(!longit.contains(".")) longit+=".0000000";
-    	while(longit.substring(longit.indexOf((int)'.')+1).length()<7) longit += "0";
+    	String longit = String.format("%.7f", location.getLongitude());
     	
     	return latit + ", " + longit;
     }
@@ -87,7 +84,14 @@ public class Converter
     	loc.setLatitude(lat);
     	return loc;
     }
-
+    public static Location latAndLngToLoc(double lat, double lng)
+    {
+    	Location loc = new Location("");
+    	loc.setLongitude(lng);
+    	loc.setLatitude(lat);
+    	return loc;
+    }
+    
     public static String addressToString(Address addr)
     {
     	String returner = addr.getMaxAddressLineIndex() > 0 ? addr.getAddressLine(0) : "";
