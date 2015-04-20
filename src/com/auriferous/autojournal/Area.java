@@ -1,6 +1,5 @@
 package com.auriferous.autojournal;
 
-import static java.lang.Math.PI;
 import static java.lang.Math.abs;
 import static java.lang.Math.atan2;
 import static java.lang.Math.cos;
@@ -10,7 +9,6 @@ import static java.lang.Math.toDegrees;
 import static java.lang.Math.toRadians;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 
 import android.location.Location;
@@ -35,8 +33,10 @@ public class Area {
     	
     	double maxDist = 0;
     	Location maxLoc1 = null, maxLoc2 = null;
-    	for(Location loc1 : locs){
-    		for(Location loc2 : locs){
+    	for(int i = 0; i < locs.size(); i += 6){
+    		for(int j = i + 3; j < locs.size(); j += 6){
+    			Location loc1 = locs.get(i);
+    			Location loc2 = locs.get(j);
         		if(loc1 == loc2) continue;
         		double currDist = calculateDistanceBetween(loc1, loc2);
         		if(currDist > maxDist){
@@ -55,120 +55,6 @@ public class Area {
     			radius = potRadius;
     		}
     	}
-    }
-    
-    //old plan
-    // calculates minimum covering circle
-    public void Area2(String initName, ArrayList<Location> locs) {
-        name = initName;
-        if (locs.size() == 0)
-            return;
-
-        if (locs.size() == 1) {
-            center = locs.get(0);
-            return;
-        }
-
-        // http://www.cs.mcgill.ca/~cs507/projects/1998/jacob/problem.html
-
-        // choose a point, make it the center
-        Location currCenter = locs.get(0);
-
-        // find the furthest point from there
-        Location furthest = locs.get(1);
-        double furthestDist = calculateDistanceBetween(currCenter, furthest);
-        for (int i = 2; i < locs.size(); i++) {
-            double potDist = calculateDistanceBetween(currCenter, locs.get(i));
-            if (potDist > furthestDist) {
-                furthestDist = potDist;
-                furthest = locs.get(i);
-            }
-        }
-
-        // start a bsearch moving the center toward the far point
-        Location outerBound = currCenter;
-        Location innerBound = furthest;
-        double currRadius = calculateDistanceBetween(currCenter, furthest);
-        Area currArea = new Area("", currCenter, currRadius);
-        while (true) {
-            currRadius = calculateDistanceBetween(currCenter, furthest);
-            currArea = new Area("", currCenter, currRadius);
-            boolean pointsOutside = false;
-            int pointOnEdgeCount = 0;
-
-            for (Location locToCheck : locs) {
-                if (!currArea.doesContain(locToCheck)) {
-                    pointsOutside = true;
-                    break;
-                }
-                if (currArea.isOnBorder(locToCheck))
-                    pointOnEdgeCount++;
-            }
-            if (!pointsOutside && (pointOnEdgeCount > 1))
-                break;
-
-            if (pointsOutside) {
-                innerBound = currCenter;
-                currCenter = calculateMidpoint(currCenter, outerBound);
-            } else {
-                outerBound = currCenter;
-                currCenter = calculateMidpoint(currCenter, innerBound);
-            }
-        }
-
-        while (true) {
-            // store the other point(s) it hits
-            ArrayList<Location> pointsOnEdge = new ArrayList<Location>();
-            for (Location locToCheck : locs) {
-                if (currArea.isOnBorder(locToCheck))
-                    pointsOnEdge.add(locToCheck);
-            }
-
-            // if there is no arc > ~185 degrees, break
-            Collections.sort(pointsOnEdge, new LocComparator(currArea));
-            Location pivot1 = pointsOnEdge.get(0);
-            Location pivot2 = pointsOnEdge.get(1);
-            for (int i = 2; i <= pointsOnEdge.size(); i++) {
-                if ((currArea.calculateAngleWith(pivot2) - currArea.calculateAngleWith(pivot1)) > PI * 1.03d) {
-                    break;
-                }
-                pivot1 = pivot2;
-                pivot2 = pointsOnEdge.get(i % pointsOnEdge.size());
-            }
-            if ((currArea.calculateAngleWith(pivot2) - currArea.calculateAngleWith(pivot1)) <= PI * 1.03d)
-                break;
-
-            // otherwise, bsearch the center along the bisector of the two ends of the arc, shrinking the radius, until a new edge point is found
-            outerBound = currCenter;
-            innerBound = calculateMidpoint(pivot1, pivot2);
-            while (true) {
-                currRadius = calculateDistanceBetween(currCenter, pivot1);
-                currArea = new Area("", currCenter, currRadius);
-                boolean pointsOutside = false;
-                int pointOnEdgeCount = 0;
-
-                for (Location locToCheck : locs) {
-                    if (!currArea.doesContain(locToCheck)) {
-                        pointsOutside = true;
-                        break;
-                    }
-                    if (currArea.isOnBorder(locToCheck))
-                        pointOnEdgeCount++;
-                }
-                if (!pointsOutside && (pointOnEdgeCount > 2))
-                    break;
-
-                if (pointsOutside) {
-                    innerBound = currCenter;
-                    currCenter = calculateMidpoint(currCenter, outerBound);
-                } else {
-                    outerBound = currCenter;
-                    currCenter = calculateMidpoint(currCenter, innerBound);
-                }
-            }
-        }
-        center = currArea.center;
-        radius = currArea.radius;
     }
 
     public boolean doesContain(Location loc) {

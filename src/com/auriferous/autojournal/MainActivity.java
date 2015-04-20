@@ -309,8 +309,13 @@ public class MainActivity extends FragmentActivity{
 	    		allLocs.add(Converter.stringToLoc(locStr));
 	    	}
 	    	
-	    	Area dayTravelCircle = new Area("", allLocs);
-	    	travelCircles.add(dayOM + "  ::" + dayTravelCircle.toString());
+	    	try{
+		    	Area dayTravelCircle = new Area("", allLocs);
+		    	travelCircles.add(dayOM + "  ::" + dayTravelCircle.toString());
+	    	}
+	    	catch(Exception e){
+	    		travelCircles.add(dayOM + "  ::" + "  null beeeeatch");
+	    	}
     	}
         
     	String allCircles = "";
