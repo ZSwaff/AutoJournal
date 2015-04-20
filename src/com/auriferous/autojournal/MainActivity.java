@@ -3,6 +3,7 @@ package com.auriferous.autojournal;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
@@ -84,10 +85,10 @@ public class MainActivity extends FragmentActivity{
     {
     	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
 		File metadataFile = new File(baseRoot, "Metadata.txt");
+		if(!metadataFile.exists()) return;
 		ArrayList<String> preData = Reader.readFile(metadataFile);
 		((TextView) findViewById(R.id.metadata)).setText(preData.get(0)+"\n"+preData.get(2)+"\n"+preData.get(4));
 		
-
 		TextView lastLocTextView = ((TextView) findViewById(R.id.lastLoc));
 		String newLocStr = Reader.findLastLoc(baseRoot);
 		if(!newLocStr.contains("<")){
@@ -110,8 +111,6 @@ public class MainActivity extends FragmentActivity{
     {
     	File baseRoot = new File(Environment.getExternalStorageDirectory(), "Location Logs");
     	File metadataFile = new File(baseRoot, "Metadata.txt");
-    	
-    	if(!metadataFile.exists()) return;
     	
 		metadataFile.delete();
     	
