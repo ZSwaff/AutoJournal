@@ -1,0 +1,52 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity"
+    >
+    
+    <TextView
+        android:id="@+id/nextUpdateLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="40sp"
+        android:textSize="30sp" />
+
+    <TextView
+        android:id="@+id/metadata"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="right"
+        android:textAlignment="gravity"
+        android:layout_marginTop="30dp"
+        android:layout_below="@+id/lastLoc"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="40dp"/>
+
+    <TextView
+        android:id="@+id/lastLoc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:layout_below="@+id/nextUpdateLabel"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="40dp"/>
+
+    <TextView
+        android:id="@+id/lastError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/metadata"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="30dp" />
+
+	<Chronometer
+        android:id="@+id/ancillaryChrono"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:visibility="invisible" />
+</RelativeLayout>
