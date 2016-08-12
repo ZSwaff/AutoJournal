@@ -31,7 +31,9 @@ public class Converter {
         Date date = null;
         try{
             date = sdf.parse(timeString);
-        } catch (java.text.ParseException e){}
+        } catch (java.text.ParseException e){
+            return null;
+        }
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         calendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(split[4].substring(0, split[4].length() - 3)));
@@ -40,6 +42,9 @@ public class Converter {
         return calendar;
     }
     public static String shortNiceDateAndTime(Calendar cal){
+        if(cal == null){
+            return "BAD TIME";
+        }
         return new SimpleDateFormat("h:mm a 'on' M/d/yyyy").format(cal.getTime());
     }
 
